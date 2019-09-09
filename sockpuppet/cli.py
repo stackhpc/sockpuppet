@@ -17,6 +17,8 @@ Note: This skeleton file can be safely removed if not needed!
 """
 from __future__ import division, print_function, absolute_import
 
+import imp
+
 import argparse
 import sys
 import logging
@@ -49,6 +51,20 @@ def check_port(value):
             "%s isn't a valid port number" % value)
 
 
+def check_file(value):
+    try:
+        with open(value) as f:
+            load_config(value)
+        return value
+    except (ValueError, IOError):
+        raise argparse.ArgumentTypeError(
+            "cannot open config file: %s" % value)
+
+
+def load_config(path):
+    return imp.load_source('config', path)
+
+
 def parse_args(args):
     """Parse command line parameters
 
@@ -78,6 +94,13 @@ def parse_args(args):
         type=int,
         metavar="SECONDS",
         default=10),
+    parser.add_argument(
+        '--config-path',
+        dest="config_path",
+        help="config_path",
+        type=check_file,
+        metavar="PATH",
+        default="/etc/sockpuppet/config.py"),
     parser.add_argument(
         '-v',
         '--verbose',
@@ -116,7 +139,8 @@ def main(args):
     setup_logging(args.loglevel)
     _logger.info("Listening on: {}".format(args.port))
     start_http_server(args.port)
-    collector = SockPuppetCollector()
+    config = load_config(args.config_path)
+    collector = SockPuppetCollector(config=config)
     REGISTRY.register(collector)
     while True:
         time.sleep(args.polling_interval)

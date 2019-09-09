@@ -7,89 +7,6 @@ from prometheus_client.metrics_core import GaugeMetricFamily
 
 _logger = logging.getLogger(__name__)
 
-# TODO: move this to a config file
-flow_definitions = [
-    {
-        "class": "vpn",
-        "flows": [
-            {
-                "flow": "vpn-inbound",
-                "src_port": "1194"
-            },
-            {
-                "flow": "vpn-outbound",
-                "dst_port": "1194"
-            },
-        ],
-    },
-    # run this on the compute nodes
-    {
-        "class": "ceph",
-        "flows": [
-            {
-                "flow": "ceph-mon",
-                "dst_port": "6789",
-            },
-            {
-                "flow": "ceph-mds",
-                "dst_port": "6800",
-            },
-            # By default, Ceph OSD Daemons bind to the first available ports
-            # on a Ceph Node beginning at port 6800
-            {
-                "flow": "ceph-osd-outbound",
-                "dst_port": "6800:7300",
-            },
-            {
-                "flow": "ceph-osd-inbound",
-                "src_port": "6800:7300"
-            },
-        ]
-    },
-    # run this on the monitor nodes
-    {
-        "class": "ceph",
-        "flows": [
-            {
-                "flow": "ceph-mon-inbound",
-                "src_port": "6789",
-            },
-            {
-                "flow": "ceph-mon-outbound",
-                "dst_port": "6789",
-            },
-        ]
-    },
-    # run this on the mds nodes
-    {
-        "class": "ceph",
-        "flows": [
-            {
-                "flow": "ceph-mds-inbound",
-                "dst_port": "6800",
-            },
-            {
-                "flow": "ceph-mds-outbound",
-                "src_port": "6800",
-            },
-        ]
-    },
-    # class
-    {
-        "class": "https",
-        "flows": [
-            {
-                "flow": "ceph-mds-inbound",
-                "dst_port": "443:443",
-            },
-            {
-                "flow": "ceph-mds-outbound",
-                "src_port": "443:443",
-            },
-        ]
-    },
-]
-
 _allowed_selectors = ["src_port", "dst_port"]
 
 
@@ -102,6 +19,7 @@ class SSContext:
 
 def get_socket_stats(context, retry=0):
     args = []
+    args += ["-a"]
     if context.tcp:
         args += ["-t"]
     if context.udp:
@@ -140,42 +58,60 @@ def find_flow(definitions, labels):
     return None, None
 
 
-def _create_labels(definitions, name):
-    for definition in definitions:
-        if definition["name"] == name:
-            # add mandatory labels
-            return ["class", "flow"] + list(definition["label_names"])
+class Metric(object):
 
-#class TCPMetric(object):
-#    def __init__(self):
+    @property
+    def label_names(self):
+        return ["class", "flow"]
 
-class SockPuppetCollector(object):
 
-    def __init__(self):
-        self.context = SSContext(tcp=True, process=True)
-        self.metric_definitions = [
-            {
-                "name": "rtt",
-                "path": jmespath.compile("tcp_info.rtt"),
-                "create": self.basic_gauge,
-                "label_names": ["src", "src_port", "dest", "dst_port"],
-                "label_paths": [
+class TCPMetric(Metric):
+
+    def __init__(self, path):
+        self.path = jmespath.compile(path)
+        self.tcp_label_names = ["src", "src_port", "dest", "dst_port"]
+        self.tcp_label_paths = [
                     jmespath.compile("src"),
                     jmespath.compile("src_port"),
                     jmespath.compile("dst"),
                     jmespath.compile("dst_port"),
                 ]
-            }
-        ]
+
+    @property
+    def label_names(self):
+        return super(TCPMetric, self).label_names + self.tcp_label_names
+
+    def create(self, config, metric_family, flow):
+        value = self.path.search(flow)
+        if value is not None:
+            label_values = [str(x.search(flow)) for x in
+                            self.tcp_label_paths]
+            labels = dict(zip(self.tcp_label_names, label_values))
+            matching_def, matching_flow = find_flow(
+                config.flow_definitions,
+                labels
+            )
+            if matching_flow:
+                class_value = matching_def["class"]
+                flow_value = matching_flow["flow"]
+                all_labels = [class_value, flow_value] + label_values
+                metric_family.add_metric(all_labels, value)
+
+
+class SockPuppetCollector(object):
+
+    def __init__(self, config):
+        self.context = SSContext(tcp=True, process=True)
+        self.config = config
+        self.metric_definitions = {
+            "rtt": TCPMetric("tcp_info.rtt")
+        }
         self.metric_registry = {
             "rtt": GaugeMetricFamily(
                 "sockpuppet_tcp_rtt",
                 "TCP Round Trip Time",
-                labels=_create_labels(self.metric_definitions, "rtt"))
+                labels=self.metric_definitions["rtt"].label_names)
         }
-
-    def basic_gauge(self, gauge, value, labels):
-        gauge.add_metric(labels, value)
 
     def poll(self):
         stats = get_socket_stats(self.context)
@@ -188,23 +124,6 @@ class SockPuppetCollector(object):
             yield value
 
     def process_tcp_flow(self, flow):
-        for definition in self.metric_definitions:
-            value = definition["path"].search(flow)
-            if value is not None:
-                create = definition["create"]
-                metric_name = definition["name"]
-                metric = self.metric_registry[metric_name]
-                label_names = definition["label_names"]
-                label_values = [str(x.search(flow)) for x in
-                                definition["label_paths"]]
-                labels = dict(zip(label_names, label_values))
-                matching_def, matching_flow = find_flow(
-                    flow_definitions,
-                    labels
-                )
-                if matching_flow:
-                    # Add mandatory labels
-                    class_name = matching_def["class"]
-                    flow_name = matching_flow["flow"]
-                    all_labels = [class_name, flow_name] + label_values
-                    create(metric, value, all_labels)
+        for name, definition in self.metric_definitions.items():
+            metric_family = self.metric_registry[name]
+            definition.create(self.config, metric_family, flow)

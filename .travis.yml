@@ -4,25 +4,9 @@
 
 sudo: false
 language: python
-env:
-  matrix:
-    - DISTRIB="ubuntu" PYTHON_VERSION="2.7" COVERAGE="true"
-    - DISTRIB="conda" PYTHON_VERSION="2.7" COVERAGE="false"
-    - DISTRIB="conda" PYTHON_VERSION="3.7" COVERAGE="false"
-:addons:
-  apt:
-    packages:
-      - git
-      - python-pip
-install:
-  - source tests/travis_install.sh
-  - pip install -r requirements.txt
-before_script:
-  - git config --global user.email "you@example.com"
-  - git config --global user.name "Your Name"
-script:
-  - python setup.py test
-after_success:
-  - if [[ "$COVERAGE" == "true" ]]; then coveralls || echo "failed"; fi
-cache:
-  - apt
+python:
+    - "2.7"
+    - "3.7"
+install: pip install tox-travis
+script: tox
+

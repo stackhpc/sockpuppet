@@ -28,17 +28,21 @@ def get_socket_stats(context, retry=0):
     if context.process:
         args += ["-p"]
     cmd = ["ss2"] + args
-    result = subprocess.run(cmd, capture_output=True)
-    if result.returncode != 0:
-        _logger.error("return code non-zero: {}".format(result.stderr))
-        if retry < 1 and context.process:
-            _logger.error("Gathering process information requires root "
-                          "privileges, auto disabling process gathering.")
-            context.process = False
-            return get_socket_stats(context, retry=retry + 1)
-        else:
-            return
-    return json.loads(result.stdout)
+    try:
+        pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+        std_out, std_err = pipes.communicate()
+
+        if pipes.returncode != 0:
+            _logger.error("return code non-zero: {}".format(std_err))
+            if retry < 1 and context.process:
+                _logger.error("Gathering process information requires root "
+                              "privileges, auto disabling process gathering.")
+                context.process = False
+                return get_socket_stats(context, retry=retry + 1)
+        return json.loads(std_out)
+    except IOError as e:
+        _logger.error("Failed to run ss2", e)
 
 
 def find_flow(definitions, labels):

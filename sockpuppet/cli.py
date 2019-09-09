@@ -29,7 +29,7 @@ from prometheus_client import start_http_server
 
 
 from sockpuppet import __version__
-from sockpuppet.collector import SockPuppetCollector, SSContext
+from sockpuppet.collector import SockPuppetCollector
 
 __author__ = "Will Szumski"
 __copyright__ = "Will Szumski"
@@ -53,8 +53,7 @@ def check_port(value):
 
 def check_file(value):
     try:
-        with open(value) as f:
-            load_config(value)
+        load_config(value)
         return value
     except (ValueError, IOError):
         raise argparse.ArgumentTypeError(

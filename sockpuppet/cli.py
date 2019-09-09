@@ -87,6 +87,12 @@ def parse_args(args):
         metavar="PORT",
         default=30000)
     parser.add_argument(
+        '--listen-address',
+        dest="address",
+        help="listening address",
+        metavar="ADDR",
+        default="127.0.0.1")
+    parser.add_argument(
         '--polling-interval',
         dest="polling_interval",
         help="polling interval",
@@ -136,8 +142,8 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    _logger.info("Listening on: {}".format(args.port))
-    start_http_server(args.port)
+    _logger.info("Listening on: {}:{}".format(args.address, args.port))
+    start_http_server(args.port, addr=args.address)
     config = load_config(args.config_path)
     collector = SockPuppetCollector(config=config)
     REGISTRY.register(collector)

@@ -6,7 +6,7 @@ console script. To run this script uncomment the following line in the
 entry_points section in setup.cfg:
 
     console_scripts =
-     fibonacci = sockpuppet.skeleton:run
+     fibonacci = sockpuppet.cli:run
 
 Then run `python setup.py install` which will install the command `fibonacci`
 inside your current environment.
@@ -20,8 +20,14 @@ from __future__ import division, print_function, absolute_import
 import argparse
 import sys
 import logging
+import time
+
+from prometheus_client.core import REGISTRY
+from prometheus_client import start_http_server
+
 
 from sockpuppet import __version__
+from sockpuppet.collector import SockPuppetCollector, SSContext
 
 __author__ = "Will Szumski"
 __copyright__ = "Will Szumski"
@@ -30,20 +36,17 @@ __license__ = "apache"
 _logger = logging.getLogger(__name__)
 
 
-def fib(n):
-    """Fibonacci example function
-
-    Args:
-      n (int): integer
-
-    Returns:
-      int: n-th Fibonacci number
-    """
-    assert n > 0
-    a, b = 1, 1
-    for i in range(n-1):
-        a, b = b, a+b
-    return a
+def check_port(value):
+    try:
+        ivalue = int(value)
+        if ivalue <= 0:
+            raise ValueError()
+        if ivalue > 65535:
+            raise ValueError()
+        return ivalue
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "%s isn't a valid port number" % value)
 
 
 def parse_args(args):
@@ -56,16 +59,25 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Just a Fibonnaci demonstration")
+        description="Prometheus Socket Statistics exporter")
     parser.add_argument(
         '--version',
         action='version',
         version='sockpuppet {ver}'.format(ver=__version__))
     parser.add_argument(
-        dest="n",
-        help="n-th Fibonacci number",
+        '--port',
+        dest="port",
+        help="listening port",
+        type=check_port,
+        metavar="PORT",
+        default=30000)
+    parser.add_argument(
+        '--polling-interval',
+        dest="polling_interval",
+        help="polling interval",
         type=int,
-        metavar="INT")
+        metavar="SECONDS",
+        default=10),
     parser.add_argument(
         '-v',
         '--verbose',
@@ -102,9 +114,14 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-    _logger.debug("Starting crazy calculations...")
-    print("The {}-th Fibonacci number is {}".format(args.n, fib(args.n)))
-    _logger.info("Script ends here")
+    _logger.info("Listening on: {}".format(args.port))
+    start_http_server(args.port)
+    collector = SockPuppetCollector()
+    REGISTRY.register(collector)
+    while True:
+        time.sleep(args.polling_interval)
+        _logger.info("Polling the collector")
+        collector.poll()
 
 
 def run():

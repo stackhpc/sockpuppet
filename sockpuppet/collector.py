@@ -65,8 +65,7 @@ def find_flow(definitions, labels):
 
 class TCPFlowContext(object):
 
-    def __init__(self, config, metric_family, flow):
-        self.metric_family = metric_family
+    def __init__(self, config, flow):
         self.flow = flow
         self.label_values = TCPMetric.get_label_values(flow)
 
@@ -95,12 +94,12 @@ class Metric(object):
     def label_names(self):
         return ["class", "flow"]
 
-    def create(self, context):
+    def create(self, context, metric):
         value = self.path.search(context.flow)
         if value is not None:
             all_labels = [context.flow_class, context.flow_name] + \
                          context.label_values
-            context.metric_family.add_metric(all_labels, value)
+            metric.add_metric(all_labels, value)
 
 
 class TCPMetric(Metric):
@@ -175,8 +174,8 @@ class SockPuppetCollector(object):
             yield value
 
     def process_tcp_flow(self, flow):
+        context = TCPFlowContext(self.config, flow)
         for name, definition in self.metric_definitions.items():
             metric = self.metric_registry[name]
-            context = TCPFlowContext(self.config, metric, flow)
             if context.should_collect():
-                definition.create(context)
+                definition.create(context, metric)

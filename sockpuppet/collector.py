@@ -134,7 +134,9 @@ class SockPuppetCollector(object):
             "notsent_bytes": TCPMetric("tcp_info.notsent_bytes"),
 
         }
-        self.metric_registry = {
+
+    def metrics(self):
+        metrics = {
             "rtt": GaugeMetricFamily(
                 "sockpuppet_tcp_rtt",
                 "The smooth round trip time of delays between sent packets "
@@ -162,20 +164,20 @@ class SockPuppetCollector(object):
                 "sent",
                 labels=self.metric_definitions["notsent_bytes"].label_names),
         }
+        return metrics
 
-    def poll(self):
+    def collect(self):
         stats = get_socket_stats(self.context)
         if stats:
             for flow in stats["TCP"]["flows"]:
-                self.process_tcp_flow(flow)
-
-    def collect(self):
-        for value in self.metric_registry.values():
-            yield value
+                for metric in self.process_tcp_flow(flow):
+                    yield metric
 
     def process_tcp_flow(self, flow):
         context = TCPFlowContext(self.config, flow)
+        metrics = self.metrics()
         for name, definition in self.metric_definitions.items():
-            metric = self.metric_registry[name]
+            metric = metrics[name]
             if context.should_collect():
                 definition.create(context, metric)
+                yield metric

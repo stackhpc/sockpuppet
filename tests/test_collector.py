@@ -37,4 +37,4 @@ def mock_module(code):
 def test_poll():
     config = mock_module(config_basic)
     collector = SockPuppetCollector(config)
-    collector.poll()
+    collector.collect()

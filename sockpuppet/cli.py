@@ -93,13 +93,6 @@ def parse_args(args):
         metavar="ADDR",
         default="127.0.0.1")
     parser.add_argument(
-        '--polling-interval',
-        dest="polling_interval",
-        help="polling interval",
-        type=int,
-        metavar="SECONDS",
-        default=10),
-    parser.add_argument(
         '--config-path',
         dest="config_path",
         help="config_path",
@@ -148,9 +141,7 @@ def main(args):
     collector = SockPuppetCollector(config=config)
     REGISTRY.register(collector)
     while True:
-        time.sleep(args.polling_interval)
-        _logger.info("Polling the collector")
-        collector.poll()
+        time.sleep(10)
 
 
 def run():

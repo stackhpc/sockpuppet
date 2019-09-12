@@ -132,7 +132,6 @@ class SockPuppetCollector(object):
             "bytes_acked": TCPMetric("tcp_info.bytes_acked"),
             "bytes_received": TCPMetric("tcp_info.bytes_received"),
             "notsent_bytes": TCPMetric("tcp_info.notsent_bytes"),
-
         }
 
     def metrics(self):
@@ -157,11 +156,11 @@ class SockPuppetCollector(object):
                 "sockpuppet_tcp_bytes_received",
                 "Number of bytes that have been received",
                 labels=self.metric_definitions["bytes_received"].label_names),
-
+            # https://github.com/torvalds/linux/commit/cd9b266095f422267bddbec88f9098b48ea548fc,  # noqa
             "notsent_bytes": GaugeMetricFamily(
                 "sockpuppet_tcp_notsent_bytes",
                 "the amount of bytes in the write queue that were not yet "
-                "sent",
+                "sent. This is only likely to work with a linux >= 4.6.",
                 labels=self.metric_definitions["notsent_bytes"].label_names),
         }
         return metrics

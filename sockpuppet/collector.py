@@ -132,6 +132,8 @@ class SockPuppetCollector(object):
             "bytes_acked": TCPMetric("tcp_info.bytes_acked"),
             "bytes_received": TCPMetric("tcp_info.bytes_received"),
             "notsent_bytes": TCPMetric("tcp_info.notsent_bytes"),
+            "tmem": TCPMetric("meminfo.t"),
+            "wmem": TCPMetric("meminfo.w"),
         }
 
     def metrics(self):
@@ -156,12 +158,26 @@ class SockPuppetCollector(object):
                 "sockpuppet_tcp_bytes_received",
                 "Number of bytes that have been received",
                 labels=self.metric_definitions["bytes_received"].label_names),
+
             # https://github.com/torvalds/linux/commit/cd9b266095f422267bddbec88f9098b48ea548fc,  # noqa
             "notsent_bytes": GaugeMetricFamily(
                 "sockpuppet_tcp_notsent_bytes",
                 "the amount of bytes in the write queue that were not yet "
                 "sent. This is only likely to work with a linux >= 4.6.",
                 labels=self.metric_definitions["notsent_bytes"].label_names),
+
+            # idiag_tmem, see: man sock_diag
+            "tmem": GaugeMetricFamily(
+                "sockpuppet_tcp_tmem_bytes",
+                "The amount of data in send queue",
+                labels=self.metric_definitions["tmem"].label_names),
+
+            # idiag_wmem
+            "wmem": GaugeMetricFamily(
+                "sockpuppet_tcp_wmem_bytes",
+                "The amount of data that is queued by TCP"
+                "but not yet sent.",
+                labels=self.metric_definitions["wmem"].label_names),
         }
         return metrics
 

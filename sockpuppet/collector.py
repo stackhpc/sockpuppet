@@ -158,7 +158,7 @@ class SockPuppetCollector(object):
                 "Number of bytes that have been received",
                 labels=self.metric_definitions["bytes_received"].label_names),
 
-            "notsent_bytes": CounterMetricFamily(
+            "notsent_bytes": GaugeMetricFamily(
                 "sockpuppet_tcp_notsent_bytes",
                 "the amount of bytes in the write queue that were not yet "
                 "sent",

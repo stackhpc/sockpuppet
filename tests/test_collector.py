@@ -240,6 +240,46 @@ flow_definitions = [
     assert b is None
 
 
+def test_find_flow_with_dst_range_obj():
+    config_range = """
+from sockpuppet.collector import xrange
+flow_definitions = [
+    {
+        "class": "example",
+        "flows": [
+            {
+                "flow": "in",
+                "src_port": xrange(1235,65536)
+            },
+            {
+                "flow": "out",
+                "dst_port": xrange(1,1235)
+            },
+        ],
+    },
+]
+"""
+    config = mock_module(config_range)
+    labels_end = {
+        "dst_port": 1234,
+    }
+    labels_start = {
+        "dst_port": 1,
+    }
+    labels_out_of_range = {
+        "dst_port": 1337,
+    }
+    a, b = find_flow(config.flow_definitions, labels_start)
+    assert a is not None
+    assert b is not None
+    a, b = find_flow(config.flow_definitions, labels_end)
+    assert a is not None
+    assert b is not None
+    a, b = find_flow(config.flow_definitions, labels_out_of_range)
+    assert a is None
+    assert b is None
+
+
 @mock.patch('sockpuppet.collector.get_socket_stats',
             side_effect=lambda _: make_tcp_flows([make_flow(src_port=1)]))
 def test_end_to_end(_mock):

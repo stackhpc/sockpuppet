@@ -3,6 +3,11 @@ import logging
 import json
 import jmespath
 
+try:
+    xrange = xrange
+except NameError:  # python3
+    xrange = range
+
 from prometheus_client.metrics_core import GaugeMetricFamily, \
     CounterMetricFamily
 
@@ -53,7 +58,7 @@ def find_flow(definitions, labels):
             return False
         if isinstance(flow[item], int):
             return flow[item] == labels[item]
-        if isinstance(flow[item], set):
+        if isinstance(flow[item], set) or isinstance(flow[item], xrange):
             return labels[item] in flow[item]
         if (item == "src_port" or item == "dst_port") and ":" in flow[item]:
             split = flow[item].split(":")

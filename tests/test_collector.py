@@ -14,11 +14,11 @@ __copyright__ = "Will Szumski"
 __license__ = "apache"
 
 
-def make_flow(src="192.168.1.1", dest="192.168.1.2", src_port=1,
+def make_flow(src="192.168.1.1", dst="192.168.1.2", src_port=1,
               dst_port=8888):
     return {
         "src": src,
-        "dst": dest,
+        "dst": dst,
         "src_port": src_port,
         "dst_port": dst_port,
         "inode": 582720,
@@ -251,6 +251,30 @@ flow_definitions = [
             {
                 "flow": "https-inbound",
                 "src_port": 1
+            },
+        ]
+    },
+]
+"""
+    config = mock_module(config_basic)
+    collector = SockPuppetCollector(config)
+    items = list(collector.collect())
+    assert len(items) == len(collector.metric_definitions)
+
+
+@mock.patch('sockpuppet.collector.get_socket_stats',
+            side_effect=lambda _: make_tcp_flows(
+                [make_flow(src_port=1, dst="192.168.1.2")]))
+def test_end_to_end_dst_set(_mock):
+    config_basic = """
+flow_definitions = [
+    {
+        "class": "https",
+        "flows": [
+            {
+                "flow": "https-inbound",
+                "src_port": 1,
+                "dst": {"192.168.1.1", "192.168.1.2"}
             },
         ]
     },

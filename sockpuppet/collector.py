@@ -8,7 +8,7 @@ from prometheus_client.metrics_core import GaugeMetricFamily, \
 
 _logger = logging.getLogger(__name__)
 
-_allowed_selectors = ["src_port", "dst_port"]
+_allowed_selectors = ["src_port", "dst_port", "src", "dst"]
 
 
 class SSContext:
@@ -110,7 +110,7 @@ class Metric(object):
 
 class TCPMetric(Metric):
 
-    tcp_label_names = ["src", "src_port", "dest", "dst_port"]
+    tcp_label_names = ["src", "src_port", "dst", "dst_port"]
     tcp_label_paths = [
         jmespath.compile("src"),
         jmespath.compile("src_port"),

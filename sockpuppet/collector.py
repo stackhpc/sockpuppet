@@ -49,10 +49,16 @@ def find_flow(definitions, labels):
     def test(flow, item):
         if item not in flow:
             return True
+        if item not in labels:
+            return False
+        if isinstance(flow[item], int):
+            return flow[item] == labels[item]
+        if isinstance(flow[item], set):
+            return labels[item] in flow[item]
         if (item == "src_port" or item == "dst_port") and ":" in flow[item]:
             split = flow[item].split(":")
-            maximum = split[0]
-            minimum = split[1]
+            maximum = int(split[1])
+            minimum = int(split[0])
             return maximum >= labels[item] >= minimum
         return flow[item] == labels[item]
 
@@ -118,7 +124,7 @@ class TCPMetric(Metric):
 
     @staticmethod
     def get_label_values(flow):
-        return [str(x.search(flow)) for x in TCPMetric.tcp_label_paths]
+        return [x.search(flow) for x in TCPMetric.tcp_label_paths]
 
 
 class SockPuppetCollector(object):

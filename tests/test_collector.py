@@ -433,6 +433,10 @@ flow_definitions = [
     assert len(items) == 0
 
 
+def test_example_config_parses():
+    cli.load_config("../config/config_example.py")
+
+
 def test_collect():
     config_basic = """
 flow_definitions = [

@@ -109,7 +109,7 @@ class Metric(object):
         value = self.path.search(context.flow)
         if value is not None:
             all_labels = [context.flow_class, context.flow_name] + \
-                         context.label_values
+                         [str(x) for x in context.label_values]
             metric.add_metric(all_labels, value)
 
 

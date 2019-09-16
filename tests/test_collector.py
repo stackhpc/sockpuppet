@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import imp
 
+from sockpuppet import cli
+
 try:
     import unittest.mock as mock
 except ImportError:
@@ -83,6 +85,77 @@ def make_flow(src="192.168.1.1", dst="192.168.1.2", src_port=1,
             "rcv_wscale": 8
         },
         "cong_algo": "cubic"
+    }
+
+
+def flow_sample1():
+    return {
+        "src": "192.168.246.132",
+        "src_port": 51056,
+        "retrans": 0,
+        "dst": "10.42.0.4",
+        "cong_algo": "cubic",
+        "dst_port": 6800,
+        "meminfo": {
+            "r": 0,
+            "t": 0,
+            "w": 0,
+            "f": 0
+        },
+        "iface_idx": 0,
+        "inode": 1823686,
+        "tcp_info": {
+            "delivery_rate": 1095216791572,
+            "retrans": 0,
+            "data_segs_in": 99,
+            "rto": 235.0,
+            "segs_in": 1245672,
+            "rtt": 34.194,
+            "retransmits": 0,
+            "bytes_received": 365946358,
+            "last_ack_sent": 0,
+            "rcv_space": 71459,
+            "rcv_mss": 1344,
+            "max_pacing_rate": 18446744073709551615,
+            "ca_state": 0,
+            "min_rtt": 1768060259,
+            "segs_out": 1126025,
+            "advmss": 1398,
+            "state": "established",
+            "last_ack_recv": 4038,
+            "snd_wscale": 7,
+            "pmtu": 1450,
+            "busy_time": 1108102138157,
+            "bytes_acked": 202480195,
+            "rcv_ssthresh": 247929,
+            "total_retrans": 1217,
+            "last_data_recv": 4038,
+            "unacked": 0,
+            "fackets": 0,
+            "sndbuf_limited": 0,
+            "sacked": 0,
+            "reordering": 4,
+            "pacing_rate": 550271,
+            "rttvar": 20.87,
+            "snd_cwnd": 7,
+            "last_data_sent": 4054,
+            "null": 0,
+            "rcv_wscale": 7,
+            "probes": 0,
+            "notsent_bytes": 262154,
+            "data_segs_out": 276,
+            "snd_ssthresh": 6,
+            "lost": 0,
+            "ato": 40.0,
+            "rwnd_limited": 9581030802091972122,
+            "rcv_rtt": 194.25,
+            "delivery_rate_app_limited": 0,
+            "snd_mss": 1344,
+            "opts": [
+                "ts",
+                "sack"
+            ]
+        }
     }
 
 
@@ -304,7 +377,7 @@ flow_definitions = [
 
 @mock.patch('sockpuppet.collector.get_socket_stats',
             side_effect=lambda _: make_tcp_flows(
-                [make_flow(src_port=1, dst="192.168.1.2")]))
+                [make_flow(dst_port=1, dst="192.168.1.2")]))
 def test_end_to_end_dst_set(_mock):
     config_basic = """
 flow_definitions = [
@@ -325,6 +398,18 @@ flow_definitions = [
     items = list(collector.collect())
     assert len(items) == len(collector.metric_definitions)
 
+
+@mock.patch('sockpuppet.collector.get_socket_stats',
+            side_effect=lambda _: make_tcp_flows(
+                [flow_sample1()]))
+def test_end_to_end_sample_1(_mock):
+    config = cli.load_config("../config/config_sample_1.py")
+    collector = SockPuppetCollector(config)
+    items = list(collector.collect())
+    for i in items:
+        for sample in i.samples:
+            assert sample.labels["flow"] == "ceph-mds"
+    assert len(items) == len(collector.metric_definitions)
 
 @mock.patch('sockpuppet.collector.get_socket_stats',
             side_effect=lambda _: make_tcp_flows([make_flow(src_port=2)]))

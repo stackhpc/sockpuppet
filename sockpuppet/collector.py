@@ -103,12 +103,20 @@ class Metric(object):
 
     @property
     def label_names(self):
-        return ["class", "flow"]
+        return ["class", "flow", "process"]
 
     def create(self, context, metric):
         value = self.path.search(context.flow)
+        cmd = "None"
+        if "usr_ctxt" in context.flow:
+            for user, groups in context.flow["usr_ctxt"].items():
+                for group, cmd_meta in groups.items():
+                    # Just pick the first one, I'm not sure under which
+                    # circumstances you would see more than one, if ever.
+                    cmd = cmd_meta["cmd"]
+                    break
         if value is not None:
-            all_labels = [context.flow_class, context.flow_name] + \
+            all_labels = [context.flow_class, context.flow_name, cmd] + \
                          [str(x) for x in context.label_values]
             metric.add_metric(all_labels, value)
 

@@ -17,8 +17,8 @@ __license__ = "apache"
 
 
 def make_flow(src="192.168.1.1", dst="192.168.1.2", src_port=1,
-              dst_port=8888):
-    return {
+              dst_port=8888, cmd=None):
+    result = {
         "src": src,
         "dst": dst,
         "src_port": src_port,
@@ -86,6 +86,30 @@ def make_flow(src="192.168.1.1", dst="192.168.1.2", src_port=1,
         },
         "cong_algo": "cubic"
     }
+    usr_ctxt = {
+            "will": {
+                "12044": {
+                    "full_cmd": [
+                        cmd,
+                        "-m",
+                        "subunit.run",
+                        "discover",
+                        "-t",
+                        "./",
+                        "./tempest/test_discover",
+                        "--load-list",
+                        "/tmp/tmpMSwOWU"
+                    ],
+                    "cmd": cmd,
+                    "fds": [
+                        6
+                    ]
+                }
+            }
+        }
+    if cmd:
+        result["usr_ctxt"] = usr_ctxt
+    return result
 
 
 def flow_sample1():
@@ -382,12 +406,11 @@ def test_end_to_end_dst_set(_mock):
     config_basic = """
 flow_definitions = [
     {
-        "class": "https",
+        "class": "example",
         "flows": [
             {
-                "flow": "https-inbound",
+                "flow": "in",
                 "src_port": 1,
-                "dst": {"192.168.1.1", "192.168.1.2"}
             },
         ]
     },
@@ -435,6 +458,58 @@ flow_definitions = [
 
 def test_example_config_parses():
     cli.load_config("../config/config_example.py")
+
+
+@mock.patch('sockpuppet.collector.get_socket_stats',
+            side_effect=lambda _: make_tcp_flows(
+                [make_flow(src_port=4444, cmd="/usr/bin/python")]))
+def test_process_cmd(mock_):
+    config_basic = """
+flow_definitions = [
+    {
+        "class": "example",
+        "flows": [
+            {
+                "flow": "in",
+                "src_port": 4444
+            },
+        ]
+    },
+]
+"""
+    config = mock_module(config_basic)
+    collector = SockPuppetCollector(config)
+    items = list(collector.collect())
+    for i in items:
+        for sample in i.samples:
+            assert sample.labels["process"] == "/usr/bin/python"
+    assert len(items) == len(collector.metric_definitions)
+
+
+@mock.patch('sockpuppet.collector.get_socket_stats',
+            side_effect=lambda _: make_tcp_flows(
+                [make_flow(src_port=4444)]))
+def test_process_cmd_negative(mock_):
+    config_basic = """
+flow_definitions = [
+    {
+        "class": "example",
+        "flows": [
+            {
+                "flow": "in",
+                "src_port": 4444
+            },
+        ]
+    },
+]
+"""
+    config = mock_module(config_basic)
+    collector = SockPuppetCollector(config)
+    items = list(collector.collect())
+    for i in items:
+        for sample in i.samples:
+            assert sample.labels["process"] == "None"
+    assert len(items) == len(collector.metric_definitions)
 
 
 def test_collect():

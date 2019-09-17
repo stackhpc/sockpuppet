@@ -3,17 +3,21 @@ sockpuppet
 ==========
 
 
-Add a short description here!
+A socket level TCP metrics exporter for prometheus. 
 
 
 Description
 ===========
 
-A longer description of your project goes here...
+Exports the following metrics:
 
+- sockpuppet_tcp_rtt
+- sockpuppet_tcp_rcv_rtt
+- sockpuppet_tcp_bytes_acked
+- sockpuppet_tcp_bytes_received
+- sockpuppet_tcp_notsent_bytes
+- sockpuppet_tcp_tmem_bytes
+- sockpuppet_tcp_wmem_bytes
 
-Note
-====
-
-This project has been set up using PyScaffold 2.5.11. For details and usage
-information on PyScaffold see http://pyscaffold.readthedocs.org/.
+You must specify the flows you want to collect in a config file, see:
+``config/config_example.py`` for an example.

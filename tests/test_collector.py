@@ -520,11 +520,11 @@ flow_definitions = [
         "flows": [
             {
                 "flow": "https-inbound",
-                "src_port": "443"
+                "src_port": 443
             },
             {
                 "flow": "https-outbound",
-                "dst_port": "443"
+                "dst_port": 443
             },
         ],
     },

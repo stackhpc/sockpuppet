@@ -2,7 +2,10 @@
 # numpy
 # scipy>=0.9
 prometheus_client
-pyroute2
+# We need https://github.com/svinota/pyroute2/commit/bc3b5ab767c44a65229219039535e8a1a2140b10,
+# which is currently only available on the master branch. Otherwise, we can't collect process
+# info.
+-e git://github.com/svinota/pyroute2.git#egg=pyroute2
 # transitive dependency from pyroute2
 psutil
 jmespath
